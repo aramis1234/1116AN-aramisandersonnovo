@@ -2,6 +2,9 @@ package com.example.authservice.infrastructure.security;
 
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
+import com.auth0.jwt.exceptions.JWTVerificationException;
+import com.auth0.jwt.interfaces.DecodedJWT;
+import com.auth0.jwt.interfaces.JWTVerifier;
 import com.example.authservice.application.ports.TokenService;
 import com.example.authservice.domain.user.User;
 import com.example.authservice.infrastructure.config.JwtProperties;
@@ -15,8 +18,8 @@ import java.util.Date;
 @Component
 @RequiredArgsConstructor
 public class JwtTokenService implements TokenService {
-    private final JwtProperties props;
 
+    private final JwtProperties props;
 
     @Override
     public TokenPair issue(User user) {
@@ -41,5 +44,17 @@ public class JwtTokenService implements TokenService {
                 .sign(algorithm);
 
         return new TokenPair(accessToken, "", (int) props.getAccessTtlSeconds());
+    }
+
+    public DecodedJWT verify(String token) {
+        try {
+            Algorithm algorithm = Algorithm.HMAC256(props.getSecret().getBytes(StandardCharsets.UTF_8));
+            JWTVerifier verifier = JWT.require(algorithm)
+                    .withIssuer(props.getIssuer())
+                    .build();
+            return verifier.verify(token);
+        } catch (JWTVerificationException e) {
+            throw new IllegalArgumentException("Invalid or expired token");
+        }
     }
 }
